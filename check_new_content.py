@@ -6,6 +6,7 @@
 
 import os
 import re
+import json
 import smtplib
 import requests
 import feedparser
@@ -19,10 +20,10 @@ ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 YOUTUBE_API_KEY   = os.environ.get("YOUTUBE_API_KEY", "")
 GMAIL_SENDER      = os.environ["GMAIL_SENDER"]
 GMAIL_PASSWORD    = os.environ["GMAIL_PASSWORD"]
-GMAIL_RECIPIENT   = os.environ["GMAIL_RECIPIENT"].split(",")
+GMAIL_RECIPIENT   = os.environ["GMAIL_RECIPIENT"].split(",")  # supports multiple
 CLOUD_APP_URL     = os.environ["CLOUD_APP_URL"]
 SECRET_KEY        = os.environ["SECRET_KEY"]
-LOOKBACK_DAYS     = 8
+LOOKBACK_DAYS     = 8  # slightly over a week to avoid missing anything
 
 PODCAST_FEEDS = {
     "Lex Fridman Podcast":          "https://lexfridman.com/feed/podcast/",
@@ -32,22 +33,22 @@ PODCAST_FEEDS = {
     "BG2":                          "https://anchor.fm/s/db5b6d74/podcast/rss",
     "Capital Allocators":           "https://tedseides.libsyn.com/rss",
     "Cheeky Pint":                  "https://feeds.transistor.fm/cheeky-pint-with-john-collison",
-    "Conversations with Tyler":     "https://feeds.megaphone.fm/conversationswithtyler",
-    "Founders":                     "https://podcasts.apple.com/hk/podcast/founders/id1141877104?l=en-GB",
-    "David Senra":                  "https://feeds.megaphone.fm/SCIM9007816585",
-    "Dwarkesh Podcast":             "https://feeds.megaphone.fm/dwarkesh",
+    "Conversations with Tyler":     "https://conversationswithtyler.libsyn.com/rss",
+    "Founders":                     "https://feeds.simplecast.com/7yfD0Lli",
+    "David Senra":                  "https://feeds.megaphone.fm/davidsenra",
+    "Dwarkesh Podcast":             "https://api.substack.com/feed/podcast/69345.rss",
     "Huberman Lab":                 "https://feeds.megaphone.fm/hubermanlab",
     "In Good Company":              "https://feeds.acast.com/public/shows/in-good-company-with-nicolai-tangen",
     "Invest Like The Best":         "https://feeds.megaphone.fm/investlikethebest",
-    "Lenny's Podcast":              "https://feeds.megaphone.fm/lennyspodcast",
-    "Masters in Business":          "https://podcasts.apple.com/hk/podcast/masters-in-business/id730188152?l=en-GB",
-    "Odd Lots":                     "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/8a94442e-5a74-4fa2-8b8d-ae27003a8d6b/982f5071-765c-403d-969d-ae27003a8d83/podcast.rss",
-    "Old School with Shilo Brooks":  "https://feeds.megaphone.fm/RUNMED9953716923",
+    "Lenny's Podcast":              "https://api.substack.com/feed/podcast/5547.rss",
+    "Masters in Business":          "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/4e4cd910-40a1-4619-a5f3-ae2b0012ffff/5873a3cb-298f-40bc-b71f-ae2b0013000d/podcast.rss",
+    "Odd Lots":                     "https://feeds.megaphone.fm/odd-lots",
+    "Old School with Shilo Brooks": "https://feeds.megaphone.fm/RUNMED9953716923",
     "The a16z Podcast":             "https://feeds.simplecast.com/LpAGSLnY",
-    "The Diary of a CEO":           "https://feeds.megaphone.fm/diaryofaceo",
-    "The Generalist":               "https://feeds.megaphone.fm/thegeneralist",
-    "The Knowledge Project":        "https://feeds.megaphone.fm/knowledgeproject",
-    "Y Combinator":                 "https://podcasts.apple.com/hk/podcast/y-combinator-startup-podcast/id1236907421?l=en-GB",
+    "The Diary of a CEO":           "https://feeds.acast.com/public/shows/the-diary-of-a-ceo-with-steven-bartlett",
+    "The Generalist":               "https://api.substack.com/feed/podcast/457538.rss",
+    "The Knowledge Project":        "https://feeds.simplecast.com/bOIzXFN_",
+    "Y Combinator":                 "https://anchor.fm/s/8c1524bc/podcast/rss",
 }
 
 KOL_NAMES = [
@@ -117,7 +118,8 @@ def check_podcasts():
             if feed.bozo and not feed.entries:
                 raise ValueError(f"Parse error: {feed.bozo_exception}")
             if not feed.entries:
-                log(f"  ⚠ {show}: 0 episodes (skipping)")
+                feed_errors.append((show, rss_url, "0 episodes returned"))
+                log(f"  ⚠ {show}: 0 episodes")
                 continue
             for entry in feed.entries[:10]:
                 uid = entry.get("id") or entry.get("link", "")
@@ -143,11 +145,11 @@ def check_podcasts():
                     "use_youtube": False,
                 })
                 log(f"  ✓ {show}: {entry.get('title','')[:60]}")
-                break  # only latest episode per show
+                break  # only take latest episode per show
         except Exception as e:
             feed_errors.append((show, rss_url, str(e)))
             log(f"  ✗ {show}: {e}")
-    log(f"Podcasts: {len(items)} new. Parse errors: {len(feed_errors)}")
+    log(f"Podcasts: {len(items)} new. Errors: {len(feed_errors)}")
     return items, feed_errors
 
 
@@ -169,7 +171,6 @@ def check_kol_youtube():
                 res = yt.search().list(
                     q=kol, part="snippet", type="video",
                     publishedAfter=published_after,
-                    videoDuration="long",
                     order="date", maxResults=3,
                 ).execute()
                 for item in res.get("items", []):
@@ -202,7 +203,7 @@ def check_kol_youtube():
     return items
 
 
-# ── push to cloud & email ──────────────────────────────────
+# ── push to cloud & email alerts ───────────────────────────
 
 def push_to_cloud(items):
     try:
@@ -223,7 +224,7 @@ def send_feed_error_alert(feed_errors):
         for n, u, e in feed_errors)
     html = f"""<html><body style="font-family:Arial,sans-serif;max-width:700px;margin:auto;">
       <h2 style="color:#c0392b;">⚠️ RSS Feed Errors — {datetime.now().strftime('%b %d, %Y')}</h2>
-      <p>{len(feed_errors)} feed(s) had parse errors. Update URLs in check_new_content.py on GitHub.</p>
+      <p>{len(feed_errors)} feed(s) failed. Update URLs in check_new_content.py on GitHub.</p>
       <table width="100%">{rows}</table>
     </body></html>"""
     try:
@@ -249,12 +250,28 @@ def format_digest_html(podcast_items, kol_items):
       <small style="color:#888;">{i['date']}</small>
     </td></tr>""" for i in kol_items)
 
+    app_button = f'''
+      <div style="text-align:center;margin:20px 0;">
+        <a href="{CLOUD_APP_URL}" style="
+          display:inline-block;
+          background:#c8a96e;
+          color:#000;
+          font-family:Arial,sans-serif;
+          font-size:16px;
+          font-weight:700;
+          padding:14px 36px;
+          border-radius:12px;
+          text-decoration:none;
+          letter-spacing:0.02em;
+        ">📱 Open Content Monitor</a>
+      </div>
+      <p style="text-align:center;color:#888;font-size:12px;margin-top:-10px;">
+        Tap items to select → hit Summarize → summaries arrive by email
+      </p>'''
+
     return f"""<html><body style="font-family:Arial,sans-serif;max-width:700px;margin:auto;color:#333;">
       <h2>📻 Content Digest — {date_str}</h2>
-      <p style="background:#fffbe6;padding:12px;border-left:4px solid #f0a500;border-radius:4px;">
-        <b>To summarize:</b> Open <a href="{CLOUD_APP_URL}">{CLOUD_APP_URL}</a>,
-        select episodes, hit Summarize.
-      </p>
+      {app_button}
       <h3>New Episodes ({len(podcast_items)})</h3>
       {'<table width="100%">' + rows_p + '</table>' if podcast_items else '<p>None found.</p>'}
       <h3>KOL Appearances ({len(kol_items)})</h3>
