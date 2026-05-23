@@ -114,7 +114,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     background: var(--bg);
     color: var(--text);
     font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
+    font-size: 18px;
     min-height: 100dvh;
     padding-bottom: calc(80px + env(safe-area-inset-bottom));
   }
@@ -390,7 +390,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="item-title">{{ item.title }}</div>
       {% if item.description %}<div class="item-desc">{{ item.description }}</div>{% endif %}
-      <div class="item-date">{{ item.date }}</div>
+      <div class="item-date">{{ item.date }} {% if item.url %}<a href="{{ item.url }}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;margin-left:6px;">Open ↗</a>{% endif %}</div>
     </div>
   </div>
 </div>
@@ -411,7 +411,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="item-title">{{ item.title }}</div>
       {% if item.description %}<div class="item-desc">{{ item.description }}</div>{% endif %}
-      <div class="item-date">{{ item.date }}</div>
+      <div class="item-date">{{ item.date }} {% if item.url %}<a href="{{ item.url }}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;margin-left:6px;">Open ↗</a>{% endif %}</div>
     </div>
   </div>
 </div>
