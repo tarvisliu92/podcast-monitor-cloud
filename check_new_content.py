@@ -171,6 +171,7 @@ def check_kol_youtube():
                 res = yt.search().list(
                     q=kol, part="snippet", type="video",
                     publishedAfter=published_after,
+                    videoDuration="long",
                     order="date", maxResults=3,
                 ).execute()
                 for item in res.get("items", []):
