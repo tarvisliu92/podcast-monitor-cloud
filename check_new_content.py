@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 # ============================================================
 # check_new_content.py — GitHub Actions version
-# Reads all settings from environment variables (set as GitHub secrets)
 # ============================================================
 
 import os
 import re
-import json
 import smtplib
 import requests
 import feedparser
@@ -20,35 +18,35 @@ ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 YOUTUBE_API_KEY   = os.environ.get("YOUTUBE_API_KEY", "")
 GMAIL_SENDER      = os.environ["GMAIL_SENDER"]
 GMAIL_PASSWORD    = os.environ["GMAIL_PASSWORD"]
-GMAIL_RECIPIENT   = os.environ["GMAIL_RECIPIENT"].split(",")  # supports multiple
+GMAIL_RECIPIENT   = os.environ["GMAIL_RECIPIENT"].split(",")
 CLOUD_APP_URL     = os.environ["CLOUD_APP_URL"]
 SECRET_KEY        = os.environ["SECRET_KEY"]
-LOOKBACK_DAYS     = 8  # slightly over a week to avoid missing anything
+LOOKBACK_DAYS     = 8
 
 PODCAST_FEEDS = {
-    "Lex Fridman Podcast":          "https://lexfridman.com/feed/podcast/",
-    "Acquired":                     "https://feeds.transistor.fm/acquired",
-    "80,000 Hours Podcast":         "https://feeds.transistor.fm/80000-hours-podcast",
-    "All-In":                       "https://allinchamathjason.libsyn.com/rss",
-    "BG2":                          "https://anchor.fm/s/db5b6d74/podcast/rss",
-    "Capital Allocators":           "https://tedseides.libsyn.com/rss",
-    "Cheeky Pint":                  "https://feeds.transistor.fm/cheeky-pint-with-john-collison",
-    "Conversations with Tyler":     "https://conversationswithtyler.libsyn.com/rss",
-    "Founders":                     "https://feeds.simplecast.com/7yfD0Lli",
-    "David Senra":                  "https://feeds.megaphone.fm/davidsenra",
-    "Dwarkesh Podcast":             "https://api.substack.com/feed/podcast/69345.rss",
-    "Huberman Lab":                 "https://feeds.megaphone.fm/hubermanlab",
-    "In Good Company":              "https://feeds.acast.com/public/shows/in-good-company-with-nicolai-tangen",
-    "Invest Like The Best":         "https://feeds.megaphone.fm/investlikethebest",
-    "Lenny's Podcast":              "https://api.substack.com/feed/podcast/5547.rss",
-    "Masters in Business":          "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/4e4cd910-40a1-4619-a5f3-ae2b0012ffff/5873a3cb-298f-40bc-b71f-ae2b0013000d/podcast.rss",
-    "Odd Lots":                     "https://feeds.megaphone.fm/odd-lots",
-    "Old School with Shilo Brooks": "https://feeds.megaphone.fm/RUNMED9953716923",
-    "The a16z Podcast":             "https://feeds.simplecast.com/LpAGSLnY",
-    "The Diary of a CEO":           "https://feeds.acast.com/public/shows/the-diary-of-a-ceo-with-steven-bartlett",
-    "The Generalist":               "https://api.substack.com/feed/podcast/457538.rss",
-    "The Knowledge Project":        "https://feeds.simplecast.com/bOIzXFN_",
-    "Y Combinator":                 "https://anchor.fm/s/8c1524bc/podcast/rss",
+    "Lex Fridman Podcast":           "https://lexfridman.com/feed/podcast/",
+    "Acquired":                      "https://feeds.transistor.fm/acquired",
+    "80,000 Hours Podcast":          "https://feeds.transistor.fm/80000-hours-podcast",
+    "All-In":                        "https://allinchamathjason.libsyn.com/rss",
+    "BG2":                           "https://anchor.fm/s/db5b6d74/podcast/rss",
+    "Capital Allocators":            "https://tedseides.libsyn.com/rss",
+    "Cheeky Pint":                   "https://feeds.transistor.fm/cheeky-pint-with-john-collison",
+    "Conversations with Tyler":      "https://feeds.megaphone.fm/conversationswithtyler",
+    "Founders":                      "https://feeds.simplecast.com/7yfD0Lli",
+    "David Senra":                   "https://feeds.megaphone.fm/SCIM9007816585",
+    "Dwarkesh Podcast":              "https://feeds.megaphone.fm/dwarkesh",
+    "Huberman Lab":                  "https://feeds.megaphone.fm/hubermanlab",
+    "In Good Company":               "https://feeds.acast.com/public/shows/in-good-company-with-nicolai-tangen",
+    "Invest Like The Best":          "https://feeds.megaphone.fm/investlikethebest",
+    "Lenny's Podcast":               "https://feeds.megaphone.fm/lennyspodcast",
+    "Masters in Business":           "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/4e4cd910-40a1-4619-a5f3-ae2b0012ffff/5873a3cb-298f-40bc-b71f-ae2b0013000d/podcast.rss",
+    "Odd Lots":                      "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/8a94442e-5a74-4fa2-8b8d-ae27003a8d6b/982f5071-765c-403d-969d-ae27003a8d83/podcast.rss",
+    "Old School with Shilo Brooks":  "https://feeds.megaphone.fm/RUNMED9953716923",
+    "The a16z Podcast":              "https://feeds.simplecast.com/LpAGSLnY",
+    "The Diary of a CEO":            "https://feeds.megaphone.fm/diaryofaceo",
+    "The Generalist":                "https://feeds.megaphone.fm/thegeneralist",
+    "The Knowledge Project":         "https://feeds.megaphone.fm/knowledgeproject",
+    "Y Combinator":                  "https://anchor.fm/s/8c1524bc/podcast/rss",
 }
 
 KOL_NAMES = [
@@ -61,11 +59,11 @@ KOL_NAMES = [
 ]
 
 YOUTUBE_TO_PODCAST_MAP = {
-    "Lex Fridman":    "https://lexfridman.com/feed/podcast/",
-    "Acquired":       "https://feeds.transistor.fm/acquired",
-    "Tim Ferriss":    "https://rss.art19.com/tim-ferriss-show",
-    "Huberman Lab":   "https://feeds.megaphone.fm/hubermanlab",
-    "20VC":           "https://feeds.simplecast.com/JGE3yC0V",
+    "Lex Fridman":  "https://lexfridman.com/feed/podcast/",
+    "Acquired":     "https://feeds.transistor.fm/acquired",
+    "Tim Ferriss":  "https://rss.art19.com/tim-ferriss-show",
+    "Huberman Lab": "https://feeds.megaphone.fm/hubermanlab",
+    "20VC":         "https://feeds.simplecast.com/JGE3yC0V",
 }
 
 
@@ -73,7 +71,6 @@ YOUTUBE_TO_PODCAST_MAP = {
 
 def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
-
 
 def is_recent(date_str):
     if not date_str:
@@ -86,7 +83,6 @@ def is_recent(date_str):
     except Exception:
         return True
 
-
 def fmt_date(date_str):
     if not date_str:
         return ""
@@ -94,7 +90,6 @@ def fmt_date(date_str):
         return dateparser.parse(date_str).strftime("%b %d, %Y")
     except Exception:
         return date_str[:10]
-
 
 def send_email(subject, body_html):
     msg = MIMEMultipart("alternative")
@@ -118,8 +113,7 @@ def check_podcasts():
             if feed.bozo and not feed.entries:
                 raise ValueError(f"Parse error: {feed.bozo_exception}")
             if not feed.entries:
-                feed_errors.append((show, rss_url, "0 episodes returned"))
-                log(f"  ⚠ {show}: 0 episodes")
+                log(f"  ⚠ {show}: 0 episodes (skipping)")
                 continue
             for entry in feed.entries[:10]:
                 uid = entry.get("id") or entry.get("link", "")
@@ -145,11 +139,11 @@ def check_podcasts():
                     "use_youtube": False,
                 })
                 log(f"  ✓ {show}: {entry.get('title','')[:60]}")
-                break  # only take latest episode per show
+                break
         except Exception as e:
             feed_errors.append((show, rss_url, str(e)))
             log(f"  ✗ {show}: {e}")
-    log(f"Podcasts: {len(items)} new. Errors: {len(feed_errors)}")
+    log(f"Podcasts: {len(items)} new. Parse errors: {len(feed_errors)}")
     return items, feed_errors
 
 
@@ -171,6 +165,7 @@ def check_kol_youtube():
                 res = yt.search().list(
                     q=kol, part="snippet", type="video",
                     publishedAfter=published_after,
+                    videoDuration="long",
                     order="date", maxResults=3,
                 ).execute()
                 for item in res.get("items", []):
@@ -194,7 +189,7 @@ def check_kol_youtube():
                         "use_youtube": podcast_rss is None,
                     })
                     log(f"  ✓ {kol} on {channel}: {snippet.get('title','')[:50]}")
-                    break  # one result per KOL
+                    break
             except Exception as e:
                 log(f"  ✗ {kol}: {e}")
     except Exception as e:
@@ -203,7 +198,7 @@ def check_kol_youtube():
     return items
 
 
-# ── push to cloud & email alerts ───────────────────────────
+# ── push to cloud & email ──────────────────────────────────
 
 def push_to_cloud(items):
     try:
@@ -216,7 +211,6 @@ def push_to_cloud(items):
     except Exception as e:
         log(f"Cloud push failed: {e}")
 
-
 def send_feed_error_alert(feed_errors):
     rows = "".join(
         f"<tr><td style='padding:8px;border-bottom:1px solid #eee;'><b>{n}</b></td>"
@@ -224,7 +218,7 @@ def send_feed_error_alert(feed_errors):
         for n, u, e in feed_errors)
     html = f"""<html><body style="font-family:Arial,sans-serif;max-width:700px;margin:auto;">
       <h2 style="color:#c0392b;">⚠️ RSS Feed Errors — {datetime.now().strftime('%b %d, %Y')}</h2>
-      <p>{len(feed_errors)} feed(s) failed. Update URLs in check_new_content.py on GitHub.</p>
+      <p>{len(feed_errors)} feed(s) had parse errors. Update URLs in check_new_content.py on GitHub.</p>
       <table width="100%">{rows}</table>
     </body></html>"""
     try:
@@ -232,7 +226,6 @@ def send_feed_error_alert(feed_errors):
         log("Feed error alert sent.")
     except Exception as e:
         log(f"Could not send error alert: {e}")
-
 
 def format_digest_html(podcast_items, kol_items):
     date_str = datetime.now().strftime("%A, %B %d %Y")
