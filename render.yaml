@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: content-monitor
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SECRET_KEY
+        value: change-this-to-something-random   # must match config.py
+      - key: PC_TAILSCALE_URL
+        value: http://100.x.x.x:5001             # your PC's Tailscale IP

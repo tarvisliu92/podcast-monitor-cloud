@@ -1,0 +1,8 @@
+feedparser
+requests
+python-dateutil
+google-api-python-client
+youtube-transcript-api
+openai-whisper
+anthropic
+yt-dlp
