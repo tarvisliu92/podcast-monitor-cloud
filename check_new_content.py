@@ -6,7 +6,6 @@
 
 import os
 import re
-import json
 import smtplib
 import requests
 import feedparser
@@ -20,10 +19,10 @@ ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 YOUTUBE_API_KEY   = os.environ.get("YOUTUBE_API_KEY", "")
 GMAIL_SENDER      = os.environ["GMAIL_SENDER"]
 GMAIL_PASSWORD    = os.environ["GMAIL_PASSWORD"]
-GMAIL_RECIPIENT   = os.environ["GMAIL_RECIPIENT"].split(",")  # supports multiple
+GMAIL_RECIPIENT   = os.environ["GMAIL_RECIPIENT"].split(",")
 CLOUD_APP_URL     = os.environ["CLOUD_APP_URL"]
 SECRET_KEY        = os.environ["SECRET_KEY"]
-LOOKBACK_DAYS     = 8  # slightly over a week to avoid missing anything
+LOOKBACK_DAYS     = 8
 
 PODCAST_FEEDS = {
     "Lex Fridman Podcast":          "https://lexfridman.com/feed/podcast/",
@@ -34,21 +33,21 @@ PODCAST_FEEDS = {
     "Capital Allocators":           "https://tedseides.libsyn.com/rss",
     "Cheeky Pint":                  "https://feeds.transistor.fm/cheeky-pint-with-john-collison",
     "Conversations with Tyler":     "https://feeds.megaphone.fm/conversationswithtyler",
-    "Founders":                     "https://feeds.simplecast.com/FDpBBqby",
+    "Founders":                     "https://podcasts.apple.com/hk/podcast/founders/id1141877104?l=en-GB",
     "David Senra":                  "https://feeds.megaphone.fm/SCIM9007816585",
     "Dwarkesh Podcast":             "https://feeds.megaphone.fm/dwarkesh",
     "Huberman Lab":                 "https://feeds.megaphone.fm/hubermanlab",
     "In Good Company":              "https://feeds.acast.com/public/shows/in-good-company-with-nicolai-tangen",
     "Invest Like The Best":         "https://feeds.megaphone.fm/investlikethebest",
     "Lenny's Podcast":              "https://feeds.megaphone.fm/lennyspodcast",
-    "Masters in Business":          "https://feeds.bloomberg.fm/BLM8864403288",
+    "Masters in Business":          "https://podcasts.apple.com/hk/podcast/masters-in-business/id730188152?l=en-GB",
     "Odd Lots":                     "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/8a94442e-5a74-4fa2-8b8d-ae27003a8d6b/982f5071-765c-403d-969d-ae27003a8d83/podcast.rss",
     "Old School with Shilo Brooks":  "https://feeds.megaphone.fm/RUNMED9953716923",
     "The a16z Podcast":             "https://feeds.simplecast.com/LpAGSLnY",
     "The Diary of a CEO":           "https://feeds.megaphone.fm/diaryofaceo",
     "The Generalist":               "https://feeds.megaphone.fm/thegeneralist",
     "The Knowledge Project":        "https://feeds.megaphone.fm/knowledgeproject",
-    "Y Combinator":                 "https://feeds.transistor.fm/ycombinator-startup-podcast",
+    "Y Combinator":                 "https://podcasts.apple.com/hk/podcast/y-combinator-startup-podcast/id1236907421?l=en-GB",
 }
 
 KOL_NAMES = [
@@ -118,8 +117,7 @@ def check_podcasts():
             if feed.bozo and not feed.entries:
                 raise ValueError(f"Parse error: {feed.bozo_exception}")
             if not feed.entries:
-                feed_errors.append((show, rss_url, "0 episodes returned"))
-                log(f"  ⚠ {show}: 0 episodes")
+                log(f"  ⚠ {show}: 0 episodes (skipping)")
                 continue
             for entry in feed.entries[:10]:
                 uid = entry.get("id") or entry.get("link", "")
@@ -145,11 +143,11 @@ def check_podcasts():
                     "use_youtube": False,
                 })
                 log(f"  ✓ {show}: {entry.get('title','')[:60]}")
-                break  # only take latest episode per show
+                break  # only latest episode per show
         except Exception as e:
             feed_errors.append((show, rss_url, str(e)))
             log(f"  ✗ {show}: {e}")
-    log(f"Podcasts: {len(items)} new. Errors: {len(feed_errors)}")
+    log(f"Podcasts: {len(items)} new. Parse errors: {len(feed_errors)}")
     return items, feed_errors
 
 
@@ -204,7 +202,7 @@ def check_kol_youtube():
     return items
 
 
-# ── push to cloud & email alerts ───────────────────────────
+# ── push to cloud & email ──────────────────────────────────
 
 def push_to_cloud(items):
     try:
@@ -225,7 +223,7 @@ def send_feed_error_alert(feed_errors):
         for n, u, e in feed_errors)
     html = f"""<html><body style="font-family:Arial,sans-serif;max-width:700px;margin:auto;">
       <h2 style="color:#c0392b;">⚠️ RSS Feed Errors — {datetime.now().strftime('%b %d, %Y')}</h2>
-      <p>{len(feed_errors)} feed(s) failed. Update URLs in check_new_content.py on GitHub.</p>
+      <p>{len(feed_errors)} feed(s) had parse errors. Update URLs in check_new_content.py on GitHub.</p>
       <table width="100%">{rows}</table>
     </body></html>"""
     try:
