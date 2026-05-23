@@ -77,6 +77,16 @@ def submit():
         return jsonify({"error": str(e)}), 502
 
 
+# ── items endpoint for reply poller ───────────────────────
+
+@app.route("/items", methods=["GET"])
+def get_items():
+    secret = request.args.get("secret", "")
+    if secret != SECRET_KEY:
+        return jsonify({"error": "unauthorized"}), 403
+    return jsonify({"items": _state["items"], "pushed_at": _state["pushed_at"]})
+
+
 # ── health check ───────────────────────────────────────────
 
 @app.route("/ping")
