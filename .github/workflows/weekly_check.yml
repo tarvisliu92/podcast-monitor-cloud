@@ -1,0 +1,33 @@
+name: Weekly Content Check
+
+on:
+  schedule:
+    - cron: '0 0 * * 5'  # Every Friday at 00:00 UTC (08:00 Beijing time)
+  workflow_dispatch:       # Also allows manual trigger from GitHub UI
+
+jobs:
+  check-content:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install feedparser requests python-dateutil google-api-python-client anthropic
+
+      - name: Run content check
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          YOUTUBE_API_KEY:   ${{ secrets.YOUTUBE_API_KEY }}
+          GMAIL_SENDER:      ${{ secrets.GMAIL_SENDER }}
+          GMAIL_PASSWORD:    ${{ secrets.GMAIL_PASSWORD }}
+          GMAIL_RECIPIENT:   ${{ secrets.GMAIL_RECIPIENT }}
+          CLOUD_APP_URL:     ${{ secrets.CLOUD_APP_URL }}
+          SECRET_KEY:        ${{ secrets.SECRET_KEY }}
+        run: python check_new_content.py
