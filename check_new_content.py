@@ -32,7 +32,7 @@ PODCAST_FEEDS = {
     "Capital Allocators":            "https://tedseides.libsyn.com/rss",
     "Cheeky Pint":                   "https://feeds.transistor.fm/cheeky-pint-with-john-collison",
     "Conversations with Tyler":      "https://feeds.megaphone.fm/conversationswithtyler",
-    "Founders":                      "https://feeds.simplecast.com/7yfD0Lli",
+    "Founders":                      "https://feeds.simplecast.com/3hnxp7yk",
     "David Senra":                   "https://feeds.megaphone.fm/SCIM9007816585",
     "Dwarkesh Podcast":              "https://feeds.megaphone.fm/dwarkesh",
     "Huberman Lab":                  "https://feeds.megaphone.fm/hubermanlab",
