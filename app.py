@@ -386,11 +386,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="item-meta">
         <span class="badge badge-podcast">PODCAST</span>
         {% if item.has_transcript %}<span class="badge-transcript">transcript ✓</span>{% endif %}
-        <span class="item-show">{{ item.show }}</span>
+        <span class="item-show" style="color:#e8c97a;font-weight:600;">{{ item.show }}</span>
+        {% if item.url %}<a href="{{ item.url }}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;font-size:11px;margin-left:4px;">Open ↗</a>{% endif %}
+        <span style="color:#555;font-size:11px;margin-left:4px;">{{ item.date }}</span>
       </div>
       <div class="item-title">{{ item.title }}</div>
-      {% if item.description %}<div class="item-desc">{{ item.description }}</div>{% endif %}
-      <div class="item-date">{{ item.date }} {% if item.url %}<a href="{{ item.url }}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;margin-left:6px;">Open ↗</a>{% endif %}</div>
+      {% if item.description %}<div class="item-desc" style="font-size:14px;">{{ item.description }}</div>{% endif %}
     </div>
   </div>
 </div>
@@ -407,11 +408,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="item-meta">
         <span class="badge badge-kol">{{ item.kol }}</span>
         {% if item.podcast_url %}<span class="badge-transcript">podcast match ✓</span>{% endif %}
-        <span class="item-show">{{ item.channel }}</span>
+        <span class="item-show" style="color:#7ab8f5;font-weight:600;">{{ item.channel }}</span>
+        {% if item.url %}<a href="{{ item.url }}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;font-size:11px;margin-left:4px;">Open ↗</a>{% endif %}
+        <span style="color:#555;font-size:11px;margin-left:4px;">{{ item.date }}</span>
       </div>
       <div class="item-title">{{ item.title }}</div>
-      {% if item.description %}<div class="item-desc">{{ item.description }}</div>{% endif %}
-      <div class="item-date">{{ item.date }} {% if item.url %}<a href="{{ item.url }}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;margin-left:6px;">Open ↗</a>{% endif %}</div>
+      {% if item.description %}<div class="item-desc" style="font-size:14px;">{{ item.description }}</div>{% endif %}
     </div>
   </div>
 </div>
